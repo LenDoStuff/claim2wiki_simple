@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doc2wiki-poc"
+version = "0.1.0"
+description = "A small PDF-to-Markdown-and-HTML wiki pipeline."
+readme = "README.md"
+license = "GPL-3.0-only"
+requires-python = ">=3.11"
+dependencies = [
+  "agent-framework-foundry==1.13.1",
+  "azure-ai-projects==2.6.1",
+  "azure-identity>=1.25,<2",
+  "pydantic>=2.0,<3",
+  "pypdf>=6.0,<7",
+  "PyYAML>=6.0,<7",
+  "markdown-it-py>=4.0,<5",
+  "tiktoken>=0.12,<1",
+  "python-dotenv>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.12,<1", "reportlab>=4,<5"]
+
+[project.scripts]
+doc2wiki = "doc2wiki.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["doc2wiki*"]
+
+[tool.setuptools.package-data]
+doc2wiki = ["style.css", "templates/*.md"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

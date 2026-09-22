@@ -1,0 +1,16 @@
+doc2wiki Python POC, created September 21, 2026.
+
+This new Python implementation recreates and simplifies the PDF ingestion
+workflow of LLM Wiki by Yong Su:
+https://github.com/nashsu/llm_wiki
+Reference commit: e8082119649e6a8e1cf85eaf289adcabfdf39d4e
+
+Upstream attribution: LLM Wiki - Copyright (C) 2024-2026 Yong Su.
+The reference project is distributed under GNU GPL version 3.
+This recreation is distributed under GNU GPL version 3; see LICENSE.
+
+The original desktop UI, query, retrieval, research, embedding and interactive
+review-action systems are not included. Ingestion prompts, purpose/schema
+templates, long-source processing, page merges, and review suggestions are
+adapted in Python for a readable PDF-only proof of concept. Review items are
+written as Markdown and offline HTML rather than handled in an application.
