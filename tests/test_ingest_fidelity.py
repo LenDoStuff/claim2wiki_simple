@@ -7,7 +7,8 @@ import pytest
 from test_pipeline import ScriptedLLM, make_pdf
 
 from doc2wiki.config import read_config, schema_folders
-from doc2wiki.llm import (
+from doc2wiki.long_source import semantic_chunks, source_context, split_page
+from doc2wiki.models import (
     Analysis,
     ChunkAnalysis,
     Generation,
@@ -18,7 +19,6 @@ from doc2wiki.llm import (
     Review,
     ReviewSuggestions,
 )
-from doc2wiki.long_source import semantic_chunks, source_context, split_page
 from doc2wiki.pdf import Source
 from doc2wiki.pipeline import build, generate_pages, validate_plan
 from doc2wiki.render import render_markdown

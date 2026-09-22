@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 
-from .llm import ChunkAnalysis
+from .models import ChunkAnalysis
 from .pdf import Source
 from .prompts import CHUNK, instructions
 from .storage import write_json

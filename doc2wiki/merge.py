@@ -3,7 +3,8 @@
 import json
 from pathlib import Path
 
-from .llm import MAX_OUTPUT_TOKENS, PageMerge
+from .llm import MAX_OUTPUT_TOKENS
+from .models import PageMerge
 from .prompts import MERGE, instructions
 from .storage import write_json
 from .wiki import Page, pdf_citations, validate_links
@@ -45,7 +46,7 @@ def merge_pages(
         )
         write_json(
             state / "merges" / context["source"]["id"] / Path(path).with_suffix(".json"),
-            result.model_dump(),
+            result.model_dump(mode="json"),
         )
         if not result.body.startswith("# ") or not result.summary.strip():
             raise ValueError(f"{path}: merge is missing a heading or summary.")

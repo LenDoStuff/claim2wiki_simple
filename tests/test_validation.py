@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from doc2wiki.llm import Analysis, Generation, PageDraft, PagePlan
+from doc2wiki.models import Analysis, Generation, PageDraft, PagePlan
 from doc2wiki.pdf import Source
 from doc2wiki.pipeline import prepare_pages, validate_plan
 

@@ -41,11 +41,11 @@ FOUNDRY_MODEL=YOUR-LUNA-DEPLOYMENT-NAME
 Use the **project endpoint**, including `/api/projects/...`, and the **deployment
 name**, which can differ from the model ID. Your Azure CLI identity needs access
 to that deployment. The pipeline creates an `AIProjectClient`, passes it into
-`FoundryChatClient`, then calls `Agent.run()` with a Pydantic response schema.
+`FoundryChatClient`, then calls `Agent.run()` for a plain Markdown text response.
+No JSON response format or response schema is sent to the model.
 Calls have separate sessions and close their network clients. No persistent
 agent resource or OpenAI API key is required. See Microsoft's
 [Foundry provider](https://learn.microsoft.com/en-us/agent-framework/integrations/by-component/model-providers/microsoft-foundry)
-and [structured output](https://learn.microsoft.com/en-us/agent-framework/agents/structured-outputs)
 documentation.
 
 The dry run extracts all PDF pages and reports approximate token counts. It does
@@ -97,9 +97,10 @@ Each ingestion saves a config snapshot under `.state/config/` for provenance.
    `[[wikilinks]]`, and page-level PDF citations. Prompts require exact structured
    data, including tables, SQL DDL, schemas, API signatures, configuration, values,
    types, constraints, keys, and indexes. Generation uses the source and analysis.
-4. **Repair incomplete output:** Retry only omitted pages once. If the combined
-   response hits its output allowance, generate each planned page individually.
-   A single page that still exhausts the allowance stops the run. If the source
+4. **Repair incomplete output:** Retry only omitted or unfinished pages once.
+   If a response hits its output allowance, keep complete FILE blocks and repair
+   the remaining pages individually. A repair that still exhausts the allowance
+   stops the run. If the source
    summary is omitted twice, preserve an explicitly labeled analysis-based summary
    and a review item, matching the reference's guaranteed-source-page behavior.
 5. **Merge:** For each existing page with a different incoming body, make a
@@ -111,7 +112,8 @@ Each ingestion saves a config snapshot under `.state/config/` for provenance.
 6. **Review:** Collect contradiction, duplicate, missing-page, and suggestion
    items from generation/merging. Like upstream, run an additional review pass
    when output reaches 10,000 characters, produces at least four pages, or already
-   contains reviews. Suggested searches are text only; nothing searches the web.
+   contains reviews. Also review after cut-off output, so unfinished review items
+   can be recovered. Suggested searches are text only; nothing searches the web.
    A failed optional review pass leaves a visible follow-up item.
 7. **Save and export:** Validate paths, planned-page coverage, links, citations,
    and metadata before overwriting pages. Back up replaced Markdown. Update the
@@ -140,7 +142,7 @@ then generation. Detailed notes are never silently trimmed. This adds an explici
 consolidation call to the reference's digest-and-notes approach. Like upstream,
 long-source output depends on the chunk analyzer preserving the evidence.
 
-Every request estimates the entire system/user/schema payload with `o200k_base`,
+Every request estimates the entire system/user prompt with `o200k_base`,
 adds 10% plus 1,024 tokens, reserves 16,000 tokens of headroom, and reserves the
 requested output: **8,192** for analysis/chunks/reviews or **32,768** for generation
 and merging. These allowances include reasoning; effort is `low`. This matches
@@ -151,6 +153,49 @@ An oversized catalog, merged page, or accumulated chunk analysis still fails
 explicitly at the context guard. This is for modest POC collections, not unbounded
 corpora. Azure rate limits can be lower than model capacity. The deployment must
 actually serve Luna; the POC does not discover its model or limits automatically.
+
+## Markdown model output
+
+The model writes Markdown directly, using the original project's file-block
+format. Each file includes YAML frontmatter and its complete Markdown body:
+
+````text
+---FILE: wiki/concepts/heat-pumps.md---
+---
+type: concept
+title: Heat pumps
+summary: Measurements and operating limitations.
+created: 2026-09-22
+updated: 2026-09-22
+tags: [heating]
+related: []
+sources: [report-123]
+---
+
+# Heat pumps
+
+Evidence, [[wikilinks]], tables, and code go here.
+---END FILE---
+````
+
+Python removes the outer FILE markers when saving `wiki/concepts/heat-pumps.md`.
+It parses and validates the YAML, preserves additional metadata, and applies
+the existing metadata unions and identity locks. Newlines and indentation inside
+Markdown code blocks are retained. A missing catalog summary is derived locally
+so original-style pages without that field are accepted.
+
+Analysis is ordinary Markdown ending with `## Page Plan` and one
+`### wiki/folder/slug.md | Title` heading per recommended page. This small heading
+convention lets Python verify coverage without asking for JSON. Chunk responses
+use `## Chunk Analysis` and `## Updated Global Digest`, like upstream. A merge
+returns one complete Markdown page, including YAML, without FILE wrappers.
+Reviews use the original `---REVIEW: type | Title---` / `---END REVIEW---` blocks.
+
+Raw model responses are saved as `.md` under `.state/responses/`, including
+incomplete responses for inspection. JSON is used only for internal parsed
+records, configuration snapshots, manifests, usage, and checkpoints—not for
+model-generated page output. Pydantic validates the internal Python records;
+it does not constrain the model to a JSON schema.
 
 ## Read and share
 
@@ -187,6 +232,7 @@ output/
   .state/
     manifest.json               # Imported hashes, settings, reviews, log
     config/                     # Per-source purpose/schema snapshots
+    responses/                  # Raw Markdown responses, including FILE/REVIEW blocks
     analysis/, generation/      # Plans and generated contributions
     merges/, reviews/           # Separate stage results
     chunks/                     # Resumable long-source analysis
@@ -208,9 +254,11 @@ and [`templates.ts`](https://github.com/nashsu/llm_wiki/blob/e8082119649e6a8e1cf
 
 Intentional differences and limits:
 
-- **Typed JSON replaces FILE/REVIEW block parsing.** Python writes frontmatter
-  and deterministic navigation, a coverage overview, ingestion log, and reports.
-  No LLM-written global overview essay or query/research interface is included.
+- **Markdown output uses the original FILE/REVIEW markers.** Python validates
+  frontmatter and maintains deterministic navigation, a coverage overview,
+  ingestion log, and reports. The Markdown analysis uses explicit page-plan
+  headings for coverage checks. No LLM-written global overview essay or
+  query/research interface is included.
 - **Failed merges stop before overwriting pages.** Upstream can fall back to
   the incoming body; this POC preserves the existing wiki instead. It also checks
   individual PDF page citations, not just source identities. These checks cannot
@@ -224,8 +272,9 @@ Intentional differences and limits:
 - No concurrency, disk-write transaction recovery, automatic source replacement,
   search, math/diagram renderer, or review action executor.
 - Calls send extracted content to your configured Azure project with `store=False`.
-  SDK parse failures can occur before token usage is exposed, so `usage.json` is
-  diagnostic rather than a complete billing record. No fallback model is used.
+  `usage.json` records completed SDK responses, including output-limit responses;
+  transport failures may not expose usage. It is a diagnostic record, not a
+  complete billing statement. No fallback model is used.
 
 **Equivalent output quality has not been established.** The restored workflow
 reduces architectural differences, but quality needs a side-by-side run on the
@@ -239,7 +288,8 @@ simulated model responses; no live Luna quality result is claimed.
 | `cli.py`, `config.py` | Commands and editable purpose/schema inputs |
 | `pdf.py`, `long_source.py` | Extraction, semantic chunks, digest checkpoints |
 | `prompts.py` | Full, readable stage instructions |
-| `llm.py` | Typed results, Luna budget, Foundry/Agent Framework calls |
+| `llm.py` | Markdown responses, Luna budget, Foundry/Agent Framework calls |
+| `responses.py`, `models.py` | FILE/REVIEW parsing and internal Python records |
 | `pipeline.py`, `merge.py` | Ingestion stages, output repair, separate merges |
 | `wiki.py`, `storage.py` | Metadata, links, reports, and JSON storage |
 | `render.py`, `style.css` | Offline HTML and ZIP |
@@ -255,6 +305,9 @@ incremental ingestion, separate merges, locked/union metadata, page-citation
 retention, custom schema routing, purpose injection, reviews, wikilink rendering,
 output repair, long-source checkpoint recovery, and HTML/ZIP export. Integration
 tests exercise the real Microsoft Agent Framework, Foundry client, and project
-SDK against a mock HTTP transport, including truncated JSON and client cleanup.
+SDK against a mock HTTP transport, including plain Markdown responses, truncated
+output, absence of a JSON response schema, and client cleanup. Parser tests cover
+frontmatter, exact code/table preservation, literal markers inside code fences,
+and recovery of complete FILE blocks before a truncated tail.
 
 See `NOTICE` and `LICENSE` for upstream attribution and GPLv3 licensing.

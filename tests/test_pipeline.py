@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from reportlab.pdfgen import canvas
 
-from doc2wiki.llm import Analysis, Generation, PageMerge, ReviewSuggestions
+from doc2wiki.models import Analysis, Generation, PageMerge, ReviewSuggestions
 from doc2wiki.pdf import read_pdf
 from doc2wiki.pipeline import build
 from doc2wiki.render import export_html

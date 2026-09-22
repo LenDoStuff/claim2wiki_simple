@@ -10,9 +10,10 @@ from agent_framework.exceptions import AgentFrameworkException
 from azure.core.exceptions import AzureError
 
 from .config import read_config, schema_folders
-from .llm import (
-    LLM,
-    MAX_OUTPUT_TOKENS,
+from .llm import LLM, MAX_OUTPUT_TOKENS
+from .long_source import source_context
+from .merge import merge_pages
+from .models import (
     Analysis,
     Generation,
     IncompleteResponse,
@@ -21,10 +22,9 @@ from .llm import (
     Review,
     ReviewSuggestions,
 )
-from .long_source import source_context
-from .merge import merge_pages
 from .pdf import Source, read_pdf
 from .prompts import ANALYZE, GENERATE, REVIEW, instructions
+from .responses import parse_generation
 from .storage import write_json
 from .wiki import (
     PAGE_PATH,
@@ -96,11 +96,13 @@ def generate_pages(context: dict, purpose: str, schema: str, llm) -> Generation:
             Generation,
             MAX_OUTPUT_TOKENS,
         )
-    except IncompleteResponse:
-        if len(plan) == 1:
-            raise
-        print("  Output limit reached; generating each planned page separately.", flush=True)
-        result = Generation(pages=[])
+    except IncompleteResponse as exc:
+        # FILE markers let us preserve complete pages and repair only the unfinished ones.
+        result = parse_generation(exc.text, partial=True)
+        context["review_incomplete"] = True
+        print(
+            "  Incomplete output; keeping complete blocks and repairing missing pages.", flush=True
+        )
     expected = {p["path"] for p in plan}
     returned = [p.path for p in result.pages]
     if len(returned) != len(set(returned)) or not set(returned).issubset(expected):
@@ -165,6 +167,8 @@ def prepare_pages(
         if not draft.body.startswith("# ") or not draft.summary.strip():
             raise ValueError(f"{draft.path}: missing heading or catalog summary.")
         metadata = {
+            **(old.metadata if old else {}),
+            **draft.metadata,
             "title": plan[draft.path].title,
             "type": folders[draft.path.split("/")[0]],
             "summary": " ".join(draft.summary.split()),
@@ -195,7 +199,12 @@ def collect_reviews(
 ) -> list[Review]:
     reviews = list(generation.reviews)
     # Same trigger as upstream: substantial output, four pages, or an emitted review.
-    if len(updates) >= 4 or sum(len(p.body) for p in updates.values()) >= 10_000 or reviews:
+    if (
+        len(updates) >= 4
+        or sum(len(p.body) for p in updates.values()) >= 10_000
+        or reviews
+        or context.get("review_incomplete")
+    ):
         try:
             result = llm.ask(
                 instructions(REVIEW, purpose, schema),
@@ -286,6 +295,8 @@ def build(
     write_json(manifest_path, manifest)
     for source in pending:
         print(f"Ingest: {source.name} ({len(source.pages)} pages)", flush=True)
+        if isinstance(llm, LLM):
+            llm.response_dir = state / "responses" / source.id
         available_sources = {
             **manifest["sources"],
             source.id: {
@@ -305,6 +316,7 @@ def build(
         }
         write_json(state / "config" / f"{source.id}.json", settings)
         context["source_text"] = source_context(source, context, purpose, schema, llm, state)
+        context["today"] = datetime.now(UTC).date().isoformat()
         analysis = llm.ask(
             instructions(ANALYZE, purpose, schema),
             json.dumps(context, ensure_ascii=False),
@@ -315,7 +327,7 @@ def build(
         write_json(state / "analysis" / f"{source.id}.json", analysis.model_dump())
         context["analysis"] = analysis.model_dump()
         generation = generate_pages(context, purpose, schema, llm)
-        write_json(state / "generation" / f"{source.id}.json", generation.model_dump())
+        write_json(state / "generation" / f"{source.id}.json", generation.model_dump(mode="json"))
         updates = prepare_pages(generation, analysis, source, pages, available_sources, folders)
         generation.reviews.extend(merge_pages(updates, pages, context, purpose, schema, llm, state))
         reviews = collect_reviews(generation, updates, context, purpose, schema, llm)
