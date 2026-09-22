@@ -295,16 +295,37 @@ simulated model responses; no live Luna quality result is claimed.
 
 ## Code and validation
 
-| File | Responsibility |
-| --- | --- |
-| `cli.py`, `config.py` | Commands and editable purpose/schema inputs |
-| `pdf.py`, `long_source.py` | Extraction, semantic chunks, digest checkpoints |
-| `prompts.py` | Full, readable stage instructions |
-| `llm.py` | Markdown responses, Luna budget, Foundry/Agent Framework calls |
-| `responses.py`, `models.py` | FILE/REVIEW parsing and internal Python records |
-| `pipeline.py`, `merge.py` | Ingestion stages, output repair, separate merges |
-| `wiki.py`, `storage.py` | Metadata, links, reports, and JSON storage |
-| `render.py`, `style.css` | Single-file offline HTML with inline CSS, plus PDF/HTML ZIP |
+Start with `doc2wiki/pipeline.py` to follow the complete workflow in execution
+order. Its helpers are grouped by responsibility:
+
+```text
+doc2wiki/
+├── __main__.py              # python -m doc2wiki
+├── cli.py                   # Commands and arguments
+├── config.py                # Load editable purpose and schema
+├── pipeline.py              # Coordinate ingestion through saving and export
+├── ingestion/
+│   ├── pdf.py               # PDF text, identities, and page numbers
+│   ├── long_source.py       # Large-document chunks and digest checkpoints
+│   └── merge.py             # Integrate incoming content into existing pages
+├── llm/
+│   ├── client.py            # Foundry, Agent Framework, and token budgets
+│   ├── prompts.py           # Full, readable instructions for each stage
+│   ├── responses.py         # Parse Markdown FILE and REVIEW blocks
+│   └── models.py            # Internal records for parsed model responses
+├── wiki/
+│   ├── markdown.py          # Pages, metadata, links, index, and reports
+│   ├── state.py             # Atomic JSON writes for state and checkpoints
+│   ├── html.py              # Single-file HTML, PDF copying, and ZIP export
+│   └── style.css            # Styles embedded into the HTML
+└── templates/
+    ├── purpose.md           # Default purpose template
+    └── schema.md            # Default schema template
+```
+
+Package `__init__.py` files are omitted from the tree for clarity. Your editable
+`purpose.md` and `schema.md` stay at the project root; `templates/` contains their
+packaged defaults.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e '.[dev]'

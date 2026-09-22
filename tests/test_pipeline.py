@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from reportlab.pdfgen import canvas
 
-from doc2wiki.models import Analysis, Generation, PageMerge, ReviewSuggestions
-from doc2wiki.pdf import read_pdf
+from doc2wiki.ingestion.pdf import read_pdf
+from doc2wiki.llm.models import Analysis, Generation, PageMerge, ReviewSuggestions
 from doc2wiki.pipeline import build
-from doc2wiki.render import export_html
-from doc2wiki.wiki import load_pages
+from doc2wiki.wiki.html import export_html
+from doc2wiki.wiki.markdown import load_pages
 
 
 def make_pdf(path: Path, pages: int = 10, subject: str = "Heat pumps") -> None:

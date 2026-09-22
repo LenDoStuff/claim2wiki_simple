@@ -7,8 +7,9 @@ import pytest
 from test_pipeline import ScriptedLLM, make_pdf
 
 from doc2wiki.config import read_config, schema_folders
-from doc2wiki.long_source import semantic_chunks, source_context, split_page
-from doc2wiki.models import (
+from doc2wiki.ingestion.long_source import semantic_chunks, source_context, split_page
+from doc2wiki.ingestion.pdf import Source
+from doc2wiki.llm.models import (
     Analysis,
     ChunkAnalysis,
     Generation,
@@ -19,10 +20,9 @@ from doc2wiki.models import (
     Review,
     ReviewSuggestions,
 )
-from doc2wiki.pdf import Source
 from doc2wiki.pipeline import build, generate_pages, validate_plan
-from doc2wiki.render import render_markdown
-from doc2wiki.wiki import Page, load_pages, validate_links
+from doc2wiki.wiki.html import render_markdown
+from doc2wiki.wiki.markdown import Page, load_pages, validate_links
 
 
 def test_custom_purpose_schema_and_review_are_used_and_exported(tmp_path):
@@ -192,8 +192,8 @@ def test_source_summary_fallback_is_visible_and_flagged():
 
 
 def test_long_source_resumes_chunks_and_retains_all_notes(tmp_path, monkeypatch):
-    monkeypatch.setattr("doc2wiki.long_source.SINGLE_PASS_CHARS", 100)
-    monkeypatch.setattr("doc2wiki.long_source.CHUNK_CHARS", 250)
+    monkeypatch.setattr("doc2wiki.ingestion.long_source.SINGLE_PASS_CHARS", 100)
+    monkeypatch.setattr("doc2wiki.ingestion.long_source.CHUNK_CHARS", 250)
     pages = [f"Evidence on page {i}. " * 12 for i in range(1, 5)]
     source = Source(Path("report.pdf"), "report.pdf", "report-123", "hash", pages)
     chunks = semantic_chunks(source, 250)

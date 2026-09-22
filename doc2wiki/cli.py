@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from pypdf.errors import PdfReadError
 
 from .config import init_config
-from .llm import estimate_tokens
-from .pdf import read_pdf
+from .ingestion.pdf import read_pdf
+from .llm.client import estimate_tokens
 from .pipeline import build, discover_pdfs
-from .render import export_html
+from .wiki.html import export_html
 
 
 def main() -> None:

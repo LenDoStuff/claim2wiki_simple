@@ -5,13 +5,13 @@ import json
 import re
 from pathlib import Path
 
-from .models import ChunkAnalysis
+from ..llm.models import ChunkAnalysis
+from ..llm.prompts import CHUNK, instructions
+from ..wiki.state import write_json
 from .pdf import Source
-from .prompts import CHUNK, instructions
-from .storage import write_json
 
 # Upstream caps single-pass input at 300k characters and semantic chunks at 60k.
-# Normal ten-page PDFs stay whole. The token guard in llm.py still checks EVERY call.
+# Normal ten-page PDFs stay whole. The token guard in llm/client.py checks EVERY call.
 SINGLE_PASS_CHARS = 300_000
 CHUNK_CHARS = 60_000
 

@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 
 from markdown_it.token import Token
 
-from .wiki import (
+from .markdown import (
     AUXILIARY,
     MD,
     Page,

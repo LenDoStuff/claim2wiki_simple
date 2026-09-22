@@ -6,7 +6,7 @@ import pytest
 import yaml
 from test_pipeline import ScriptedLLM, make_pdf
 
-from doc2wiki.models import (
+from doc2wiki.llm.models import (
     Analysis,
     ChunkAnalysis,
     Generation,
@@ -14,9 +14,9 @@ from doc2wiki.models import (
     PageMerge,
     ReviewSuggestions,
 )
+from doc2wiki.llm.responses import parse_generation, parse_response
 from doc2wiki.pipeline import build, collect_reviews, generate_pages
-from doc2wiki.responses import parse_generation, parse_response
-from doc2wiki.wiki import load_pages
+from doc2wiki.wiki.markdown import load_pages
 
 PAGE = """---
 type: concept

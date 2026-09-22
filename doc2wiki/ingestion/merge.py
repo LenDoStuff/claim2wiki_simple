@@ -3,11 +3,11 @@
 import json
 from pathlib import Path
 
-from .llm import MAX_OUTPUT_TOKENS
-from .models import PageMerge
-from .prompts import MERGE, instructions
-from .storage import write_json
-from .wiki import Page, pdf_citations, validate_links
+from ..llm.client import MAX_OUTPUT_TOKENS
+from ..llm.models import PageMerge
+from ..llm.prompts import MERGE, instructions
+from ..wiki.markdown import Page, pdf_citations, validate_links
+from ..wiki.state import write_json
 
 
 def merge_pages(

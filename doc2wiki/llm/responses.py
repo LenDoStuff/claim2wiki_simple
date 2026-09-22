@@ -6,6 +6,7 @@ from typing import TypeVar, cast
 import yaml
 from pydantic import BaseModel
 
+from ..wiki.markdown import PAGE_PATH
 from .models import (
     Analysis,
     ChunkAnalysis,
@@ -17,7 +18,6 @@ from .models import (
     Review,
     ReviewSuggestions,
 )
-from .wiki import PAGE_PATH
 
 T = TypeVar("T", bound=BaseModel)
 

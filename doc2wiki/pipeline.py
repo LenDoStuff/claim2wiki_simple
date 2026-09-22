@@ -10,10 +10,11 @@ from agent_framework.exceptions import AgentFrameworkException
 from azure.core.exceptions import AzureError
 
 from .config import read_config, schema_folders
-from .llm import LLM, MAX_OUTPUT_TOKENS
-from .long_source import source_context
-from .merge import merge_pages
-from .models import (
+from .ingestion.long_source import source_context
+from .ingestion.merge import merge_pages
+from .ingestion.pdf import Source, read_pdf
+from .llm.client import LLM, MAX_OUTPUT_TOKENS
+from .llm.models import (
     Analysis,
     Generation,
     IncompleteResponse,
@@ -22,11 +23,9 @@ from .models import (
     Review,
     ReviewSuggestions,
 )
-from .pdf import Source, read_pdf
-from .prompts import ANALYZE, GENERATE, REVIEW, instructions
-from .responses import parse_generation
-from .storage import write_json
-from .wiki import (
+from .llm.prompts import ANALYZE, GENERATE, REVIEW, instructions
+from .llm.responses import parse_generation
+from .wiki.markdown import (
     PAGE_PATH,
     Page,
     catalog,
@@ -36,6 +35,7 @@ from .wiki import (
     write_navigation,
     write_reports,
 )
+from .wiki.state import write_json
 
 
 def discover_pdfs(input_dir: Path, output: Path) -> list[Path]:
@@ -375,6 +375,6 @@ def build(
     # Also supports exporting an older POC output before any new PDFs are added.
     if pages and not (wiki / "overview.md").exists():
         write_reports(wiki, pages, manifest)
-    from .render import export_html
+    from .wiki.html import export_html
 
     export_html(output)

@@ -9,7 +9,7 @@ import pytest
 from test_pipeline import ScriptedLLM, make_pdf
 
 from doc2wiki.pipeline import build
-from doc2wiki.render import export_html
+from doc2wiki.wiki.html import export_html
 
 
 class LinksAndAssets(HTMLParser):

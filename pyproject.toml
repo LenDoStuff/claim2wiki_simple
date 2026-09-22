@@ -31,7 +31,8 @@ doc2wiki = "doc2wiki.cli:main"
 include = ["doc2wiki*"]
 
 [tool.setuptools.package-data]
-doc2wiki = ["style.css", "templates/*.md"]
+doc2wiki = ["templates/*.md"]
+"doc2wiki.wiki" = ["style.css"]
 
 [tool.ruff]
 line-length = 100

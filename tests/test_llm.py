@@ -6,8 +6,8 @@ import pytest
 from azure.ai.projects.aio import AIProjectClient
 from azure.core.credentials import AccessToken
 
-from doc2wiki.llm import LLM, check_budget
-from doc2wiki.models import Analysis, Generation, IncompleteResponse, ReviewSuggestions
+from doc2wiki.llm.client import LLM, check_budget
+from doc2wiki.llm.models import Analysis, Generation, IncompleteResponse, ReviewSuggestions
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ def foundry(monkeypatch):
         transports.append(transport)
         return original_get_client(project, http_client=transport, **kwargs)
 
-    monkeypatch.setattr("doc2wiki.llm.AzureCliCredential", Credential)
+    monkeypatch.setattr("doc2wiki.llm.client.AzureCliCredential", Credential)
     monkeypatch.setattr(AIProjectClient, "get_openai_client", get_client)
     return requests, reply, credentials, transports
 
@@ -120,7 +120,7 @@ def test_real_foundry_project_agent_and_plain_markdown_response(foundry, tmp_pat
 
 
 def test_budget_includes_output_allowance_and_reserve(monkeypatch):
-    monkeypatch.setattr("doc2wiki.llm.estimate_tokens", lambda text: 950_000)
+    monkeypatch.setattr("doc2wiki.llm.client.estimate_tokens", lambda text: 950_000)
     with pytest.raises(ValueError, match="Nothing was truncated"):
         check_budget("system", "source", 32_768)
 
