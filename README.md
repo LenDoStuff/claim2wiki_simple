@@ -1,6 +1,6 @@
 # doc2wiki — Python POC
 
-Build a connected wiki from PDFs: Markdown, offline HTML, and a shareable ZIP.
+Build a connected wiki from PDFs: Markdown, one offline HTML file, and a shareable ZIP.
 Uses an **Azure AI Foundry project**, **Microsoft Agent Framework**, and a
 **GPT-5.6 Luna deployment**. No app, chat, query engine, embeddings, or database.
 
@@ -199,10 +199,17 @@ it does not constrain the model to a JSON schema.
 
 ## Read and share
 
-Open **`output/site/index.html`** directly. Share **`output/site.zip`**; recipients
-unzip it and open `index.html`. No server, JavaScript, CDN, or credentials needed.
-Original PDFs are included so citations work offline. `#page=N` support depends
-on the recipient's PDF viewer.
+Open **`output/site/index.html`** directly. It contains the entire wiki and its
+styles in one file. Navigation, wikilinks, and backlinks jump to sections in that
+file; browser Find searches the entire wiki. No server, JavaScript, CDN, or
+credentials are needed.
+
+The original PDFs sit **beside `index.html` in the same folder**, with citations
+such as `report-123.pdf#page=10`. Stable source IDs keep same-named input PDFs
+distinct. Keep these PDFs alongside the HTML when moving or sharing it.
+Share **`output/site.zip`** to package that one HTML file and the PDFs together.
+Recipients unzip it and open `index.html`. PDF `#page=N` support depends on the
+recipient's PDF viewer.
 
 Use **`output/wiki/`** as the Markdown vault. Wikilinks support `[[slug]]`,
 `[[slug|label]]`, and `[[folder/slug|label]]` for ambiguous slugs. HTML resolves
@@ -210,7 +217,7 @@ these links and creates backlinks. Fenced and inline code remain literal.
 Ordinary relative Markdown page links are also accepted. Cross-page heading
 fragments and external links are not supported in this POC.
 
-`reviews.md` and its HTML page expose the review items. After the final build you
+`reviews.md` and the HTML's review section expose the review items. After the final build you
 can record decisions in the Markdown, edit knowledge pages, and export again:
 
 ```powershell
@@ -220,6 +227,9 @@ can record decisions in the Markdown, edit knowledge pages, and export again:
 Export makes no model calls and preserves edited review/log/overview content.
 A new ingestion regenerates those reports from the manifest; it is not an
 interactive review-management app. Keep metadata and link conventions intact.
+The generated `site/` folder is rebuilt on export, removing previous multi-file
+HTML exports. Keep manual edits in `wiki/`, which retains its Markdown files and
+its original `pdfs/` subfolder.
 
 ```text
 output/
@@ -227,7 +237,9 @@ output/
     index.md, overview.md, log.md, reviews.md
     sources/, entities/, concepts/, comparisons/, syntheses/, ...
     pdfs/                       # Original documents
-  site/                         # Same structure, HTML plus CSS/PDFs
+  site/
+    index.html                  # Entire wiki, navigation, and CSS in one file
+    SOURCE-ID.pdf               # Referenced PDFs directly beside the HTML
   site.zip                      # Share this; excludes state and credentials
   .state/
     manifest.json               # Imported hashes, settings, reviews, log
@@ -292,7 +304,7 @@ simulated model responses; no live Luna quality result is claimed.
 | `responses.py`, `models.py` | FILE/REVIEW parsing and internal Python records |
 | `pipeline.py`, `merge.py` | Ingestion stages, output repair, separate merges |
 | `wiki.py`, `storage.py` | Metadata, links, reports, and JSON storage |
-| `render.py`, `style.css` | Offline HTML and ZIP |
+| `render.py`, `style.css` | Single-file offline HTML with inline CSS, plus PDF/HTML ZIP |
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e '.[dev]'

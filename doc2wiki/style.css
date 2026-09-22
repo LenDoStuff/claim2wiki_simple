@@ -16,6 +16,10 @@ nav a:hover { background: #e3ebe2; }
 nav a[aria-current] { background: #dce9df; color: #125b47; font-weight: 650; }
 .offline { border-top: 1px solid var(--line); margin-top: 35px; padding-top: 18px; }
 main { margin-left: 290px; padding: 34px clamp(24px, 5vw, 90px) 60px; max-width: 1320px; }
+.wiki-page { scroll-margin-top: 24px; padding-bottom: 48px; }
+.wiki-page + .wiki-page { border-top: 2px solid var(--line); padding-top: 38px; }
+.wiki-page:target > header { color: var(--accent); font-weight: 650; }
+.wiki-page:focus { outline: none; }
 header { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 44px; }
 header a { color: var(--muted); text-decoration: none; }
 article { max-width: 850px; overflow-wrap: anywhere; }
@@ -42,4 +46,8 @@ footer { color: var(--muted); font-size: 12px; margin-top: 48px; }
   main { margin-left: 0; padding: 24px; }
   header { margin-bottom: 28px; }
 }
-@media print { aside, header, footer, .skip { display: none; } main { margin: 0; padding: 0; } }
+@media print {
+  aside, header, footer, .skip { display: none; }
+  main { margin: 0; padding: 0; }
+  .wiki-page + .wiki-page { break-before: page; border: 0; padding-top: 0; }
+}

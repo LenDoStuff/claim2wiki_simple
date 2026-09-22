@@ -271,4 +271,4 @@ def test_markdown_responses_through_incremental_ingestion_and_html(tmp_path):
     assert page.metadata["author"] == "Preserved author"
     assert "first.pdf" in page.body and "second.pdf" in page.body
     assert "---FILE:" not in (output / "wiki/concepts/heat-pumps.md").read_text()
-    assert "second.pdf" in (output / "site/concepts/heat-pumps.html").read_text()
+    assert "second.pdf" in (output / "site/index.html").read_text()

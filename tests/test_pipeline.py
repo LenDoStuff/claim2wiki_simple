@@ -118,13 +118,15 @@ def test_ten_pages_incremental_merge_export_and_unchanged_rerun(tmp_path):
     build(inputs, output, llm=llm)
     assert len(llm.requests) == 5  # No model calls for unchanged inputs.
     assert before == (output / "wiki" / "concepts" / "heat-pumps.md").read_bytes()
-    html = (output / "site" / "concepts" / "heat-pumps.html").read_text(encoding="utf-8")
+    html = (output / "site" / "index.html").read_text(encoding="utf-8")
     assert "Linked from" in html
     assert ".pdf#page=10" in html
     assert '.md"' not in html
     with zipfile.ZipFile(output / "site.zip") as archive:
         assert "index.html" in archive.namelist()
-        assert "style.css" in archive.namelist()
+        assert "style.css" not in archive.namelist()
+        assert [p for p in archive.namelist() if p.endswith(".html")] == ["index.html"]
+        assert all("/" not in p for p in archive.namelist())
         assert len([p for p in archive.namelist() if p.endswith(".pdf")]) == 2
         assert not any(".state" in p for p in archive.namelist())
 
@@ -178,7 +180,7 @@ def test_export_escapes_html_and_keeps_code_links_literal(tmp_path):
     with path.open("a", encoding="utf-8") as file:
         file.write('\n\n<script>alert("x")</script>\n\n`[literal](missing.md)`\n')
     export_html(output)
-    html = (output / "site" / "concepts" / "heat-pumps.html").read_text(encoding="utf-8")
+    html = (output / "site" / "index.html").read_text(encoding="utf-8")
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
     assert "<code>[literal](missing.md)</code>" in html

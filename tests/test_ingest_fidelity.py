@@ -66,11 +66,9 @@ def test_custom_purpose_schema_and_review_are_used_and_exported(tmp_path):
     )
     page = load_pages(output / "wiki")["findings/heat-pumps.md"]
     assert page.metadata["type"] == "finding"
-    assert "Different operating conditions" in (output / "site/reviews.html").read_text()
-    assert (
-        'href="../findings/heat-pumps.html"'
-        in next((output / "site/sources").glob("*.html")).read_text()
-    )
+    html = (output / "site/index.html").read_text()
+    assert "Different operating conditions" in html
+    assert 'href="#page-findings/heat-pumps"' in html
     manifest = json.loads((output / ".state/manifest.json").read_text())
     assert len(manifest["reviews"]) == 1
     assert len(manifest["log"]) == 1
@@ -242,7 +240,7 @@ def test_wikilinks_resolve_aliases_ambiguity_and_leave_code_untouched():
     paths = {"concepts/pump.md", "entities/pump.md"}
     body = "See [[concepts/pump|Pump concept]]. `[[not-a-link]]`\n\n```\n[[literal]]\n```\n\n\\[\\[escaped]]"
     rendered = render_markdown(body, "sources/report.md", paths)
-    assert 'href="../concepts/pump.html">Pump concept</a>' in rendered
+    assert 'href="#page-concepts/pump">Pump concept</a>' in rendered
     assert "<code>[[not-a-link]]</code>" in rendered
     assert "[[literal]]" in rendered and "[[escaped]]" in rendered
     page = Page("sources/report.md", {}, "# Report\n\n[[pump]]")
