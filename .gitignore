@@ -5,6 +5,8 @@ __pycache__/
 .ruff_cache/
 .env
 input/
+prepared/
+raw/
 output/
 demo/
 tmp/

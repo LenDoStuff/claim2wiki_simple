@@ -12,6 +12,7 @@ requires-python = ">=3.11"
 dependencies = [
   "agent-framework-foundry==1.13.1",
   "azure-ai-projects==2.6.1",
+  "azure-ai-documentintelligence==1.0.2",
   "azure-identity>=1.25,<2",
   "pydantic>=2.0,<3",
   "pypdf>=6.0,<7",
@@ -31,7 +32,7 @@ doc2wiki = "doc2wiki.cli:main"
 include = ["doc2wiki*"]
 
 [tool.setuptools.package-data]
-doc2wiki = ["templates/*.md"]
+doc2wiki = ["templates/*.md", "templates/*.yaml"]
 "doc2wiki.wiki" = ["style.css"]
 
 [tool.ruff]

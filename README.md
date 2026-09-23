@@ -52,6 +52,97 @@ The dry run extracts all PDF pages and reports approximate token counts. It does
 not call the model or write wiki files. The first tokenizer use may download its
 vocabulary. It is not a cost estimate for all pipeline stages.
 
+## Optional one-time PDF preprocessing
+
+Two independent commands prepare a combined or scanned PDF before ingestion.
+`build` never runs OCR or document classification automatically. Run either step
+only when needed; a searchable PDF can go straight to `split` or `build`.
+
+```powershell
+# Run once for a scanned PDF: save a separate PDF with an embedded text layer.
+.\.venv\Scripts\python.exe -m doc2wiki ocr raw/bundle.pdf --output prepared/bundle.pdf
+
+# Run once to separate the logical documents and sort them into category folders.
+.\.venv\Scripts\python.exe -m doc2wiki split prepared/bundle.pdf --output input/case-1
+
+# Optionally also divide long logical documents into parts of at most 10 pages.
+# Choose a fresh output folder when changing split settings.
+.\.venv\Scripts\python.exe -m doc2wiki split prepared/bundle.pdf --output input/case-1-parts --max-pages 10
+
+# Review input/case-1/review.md, then ingest that exact split folder.
+.\.venv\Scripts\python.exe -m doc2wiki build input/case-1 --dry-run
+.\.venv\Scripts\python.exe -m doc2wiki build input/case-1 --output output/case-1
+```
+
+**OCR** lives in `doc2wiki/preprocessing/ocr.py`. It uses Azure Document
+Intelligence `prebuilt-read`, API version `2024-11-30`, requests `output=pdf`, and
+downloads Azure's searchable PDF directly. It preserves the original input file
+and verifies that analysis and PDF output include every page. It does not rebuild
+pages from extracted text. See Microsoft's [searchable PDF documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/prebuilt/read?view=doc-intel-4.0.0#searchable-pdf).
+
+The command reuses `FOUNDRY_PROJECT_ENDPOINT` and `az login`. In your Foundry
+project, configure a connection whose target is your Document Intelligence resource
+URL, then set its name in `.env`:
+
+```dotenv
+FOUNDRY_DOCUMENT_INTELLIGENCE_CONNECTION=YOUR-OCR-CONNECTION-NAME
+```
+
+`AIProjectClient.connections.get()` resolves that connection's `target`, which is
+passed to `DocumentIntelligenceClient`. The project URL is not itself an OCR URL.
+No stored connection keys are fetched; your Azure CLI identity needs access to
+both the connection and the target OCR resource. Project model access alone does
+not grant OCR access. Use the paid tier for more than two pages. A single OCR
+request supports up to 2,000 pages and 500 MB. See Microsoft's
+[project connections API](https://learn.microsoft.com/en-us/python/api/azure-ai-projects/azure.ai.projects.operations.connectionsoperations?view=azure-python).
+
+**Splitting** lives in `doc2wiki/preprocessing/split.py`. It follows the logical
+boundary approach in [docs2wikiokf/documents](https://github.com/LenDoStuff/docs2wikiokf/tree/main/src/claimwiki/documents):
+Luna receives numbered page excerpts, the preceding page, and the current
+document. Each batch returns a plain Markdown decision table. A batch with
+confidence below 0.8 gets one review pass; remaining uncertainty is recorded in
+`review.md`. Python validates every page decision and copies every original page
+exactly once into the resulting PDFs, retaining text layers and page contents.
+Boundaries are inferred from text; this is not image-based classification.
+
+Edit **[`categories.yaml`](categories.yaml)** to define category folder names,
+descriptions, and output language. Defaults use the linked project's claim
+document types: policy, correspondence, expert report, invoice, and others.
+Keep an `other` category for unclear material. `--categories-file PATH` selects a
+different file. `init` creates a missing categories file alongside purpose/schema.
+`--batch-pages` controls the model batch size (default 30, maximum 50). Excerpts
+use the beginning and end of pages over 6,000 characters; the output PDFs retain
+the complete original pages. Logical documents stay together unless `--max-pages`
+is supplied; parts retain their logical document ID in `manifest.json`.
+
+Each split output folder belongs to one source PDF. It contains:
+
+```text
+input/case-1/
+├── policy/0001-p0001-p0008-insurance-policy.pdf
+├── invoice/0002-p0009-p0010-repair-invoice.pdf
+├── manifest.json         # Ordered outputs, original page ranges, and hashes
+├── review.md             # Uncertain decisions, empty pages, and document links
+└── .state/               # Completed decision batches and raw model responses
+```
+
+Point `build` at this folder to ingest in **original document order**, even when
+category names sort differently. Ordinary input folders still use sorted paths.
+PDF citation page numbers refer to the individual split PDF; its PDF metadata
+and manifest retain the mapping to the original PDF pages. Document dates do not
+change ingestion order.
+
+Both commands skip completed, unchanged inputs after verifying output hashes.
+Keep `bundle.ocr.json` beside the OCR PDF and keep the split folder's manifest and
+state. Splitting resumes completed batches after interruption. OCR caches completed
+results; an interrupted OCR request may need to be submitted again. Changed inputs,
+settings, or edited/missing outputs require a fresh destination. The commands are
+sequential and intended for one process at a time.
+
+Empty pages are preserved and listed for review. The wiki importer still requires
+extractable text on every page, so inspect genuinely blank or visual-only pages
+before ingestion. OCR transcribes text; it does not interpret charts or photographs.
+
 ## Purpose and schema
 
 **[`purpose.md`](purpose.md)** contains the goal, key questions, scope, and thesis.
@@ -275,8 +366,9 @@ Intentional differences and limits:
   the incoming body; this POC preserves the existing wiki instead. It also checks
   individual PDF page citations, not just source identities. These checks cannot
   prove that every fact survived or that a cited page supports the claim.
-- **Selectable-text PDFs only.** No OCR, visual chart interpretation, or image
-  extraction. Empty text pages fail with an actionable message. Layout extraction
+- **Wiki ingestion requires selectable text.** The separate `ocr` command can
+  prepare scanned PDFs first. No visual chart interpretation or image extraction
+  is performed. Empty text pages fail with an actionable message. Layout extraction
   can still misread complex tables/formulas. This differs from upstream's richer
   document-conversion integrations and limits quality on visually complex PDFs.
 - ASCII slugs and one-level type folders keep routing readable and portable.
@@ -304,6 +396,9 @@ doc2wiki/
 ├── cli.py                   # Commands and arguments
 ├── config.py                # Load editable purpose and schema
 ├── pipeline.py              # Coordinate ingestion through saving and export
+├── preprocessing/
+│   ├── ocr.py               # Explicit Azure Read searchable-PDF conversion
+│   └── split.py             # Explicit logical splitting and categorization
 ├── ingestion/
 │   ├── pdf.py               # PDF text, identities, and page numbers
 │   ├── long_source.py       # Large-document chunks and digest checkpoints
@@ -320,11 +415,12 @@ doc2wiki/
 │   └── style.css            # Styles embedded into the HTML
 └── templates/
     ├── purpose.md           # Default purpose template
-    └── schema.md            # Default schema template
+    ├── schema.md            # Default schema template
+    └── categories.yaml      # Default preprocessing categories
 ```
 
 Package `__init__.py` files are omitted from the tree for clarity. Your editable
-`purpose.md` and `schema.md` stay at the project root; `templates/` contains their
+`purpose.md`, `schema.md`, and `categories.yaml` stay at the project root; `templates/` contains their
 packaged defaults.
 
 ```powershell
@@ -342,5 +438,9 @@ SDK against a mock HTTP transport, including plain Markdown responses, truncated
 output, absence of a JSON response schema, and client cleanup. Parser tests cover
 frontmatter, exact code/table preservation, literal markers inside code fences,
 and recovery of complete FILE blocks before a truncated tail.
+Preprocessing tests cover the real Document Intelligence SDK against mocked HTTP,
+searchable PDF download and page coverage, split boundaries across batches,
+uncertainty review, original-page retention, optional size caps, cached reruns,
+resume after interruption, and ingestion ordering across category folders.
 
 See `NOTICE` and `LICENSE` for upstream attribution and GPLv3 licensing.

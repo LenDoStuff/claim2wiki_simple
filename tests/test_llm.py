@@ -119,6 +119,17 @@ def test_real_foundry_project_agent_and_plain_markdown_response(foundry, tmp_pat
     assert all(p.read_text(encoding="utf-8") == reply["text"] for p in tmp_path.glob("*.md"))
 
 
+def test_preprocessing_can_read_a_plain_table_through_agent_framework(foundry):
+    requests, reply, _, _ = foundry
+    reply["text"] = "| Page | Start |\n| --- | --- |\n| 1 | yes |"
+    llm = LLM()
+    result = llm.ask_text("Classify document boundaries", "Page 1", stage="Split")
+    assert result == reply["text"]
+    assert llm.usage[0]["stage"] == "Split"
+    body = json.loads(requests[0].content)
+    assert body.get("text", {}).get("format", {}).get("type") in (None, "text")
+
+
 def test_budget_includes_output_allowance_and_reserve(monkeypatch):
     monkeypatch.setattr("doc2wiki.llm.client.estimate_tokens", lambda text: 950_000)
     with pytest.raises(ValueError, match="Nothing was truncated"):

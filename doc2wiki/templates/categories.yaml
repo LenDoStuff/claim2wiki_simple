@@ -1,0 +1,14 @@
+language: English
+categories:
+  claim_notification: Initial notice of loss, claim form, or claim notification.
+  policy: Insurance policy, coverage wording, schedule, or endorsement.
+  correspondence: Letter, email conversation, or message between parties.
+  expert_report: Adjuster, surveyor, engineering, appraisal, or expert findings.
+  incident_report: Police, fire, accident, incident, or investigation report.
+  medical_record: Medical findings, treatment records, or injury assessment.
+  invoice: Invoice, bill, receipt, or record of an incurred expense.
+  estimate: Repair quote, proposed work, or estimated costs.
+  photograph: Photographs, image sheets, or captioned visual evidence.
+  legal_document: Contract, legal notice, court filing, or witness statement.
+  payment: Payment advice, settlement, reimbursement, or reserve record.
+  other: Unknown, blank, administrative, or otherwise unclassified material.

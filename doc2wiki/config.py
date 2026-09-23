@@ -43,7 +43,7 @@ def schema_folders(schema: str) -> dict[str, str]:
 
 def init_config(directory: Path) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    for name in ("purpose.md", "schema.md"):
+    for name in ("purpose.md", "schema.md", "categories.yaml"):
         destination = directory / name
         if destination.exists():
             print(f"Keep existing: {destination}")

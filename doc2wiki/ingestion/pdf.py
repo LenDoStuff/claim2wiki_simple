@@ -31,7 +31,12 @@ def read_pdf(path: Path, name: str) -> Source:
     reader = PdfReader(path)
     if reader.is_encrypted and not reader.decrypt(""):
         raise ValueError(f"{name}: password-protected PDFs are not supported.")
-    pages = [page.extract_text(extraction_mode="layout").strip() for page in reader.pages]
+    pages = [
+        page.extract_text(extraction_mode="layout").strip()
+        if page.get_contents() is not None
+        else ""
+        for page in reader.pages
+    ]
     if not pages or not any(pages):
         raise ValueError(f"{name}: no extractable text. OCR the PDF before importing it.")
     empty = [str(i) for i, text in enumerate(pages, 1) if not text]

@@ -43,6 +43,9 @@ def discover_pdfs(input_dir: Path, output: Path) -> list[Path]:
         raise ValueError(f"PDF input must be a directory: {input_dir}")
     if input_dir == output or output in input_dir.parents:
         raise ValueError("The output directory cannot contain the input directory.")
+    split_manifest = input_dir / "manifest.json"
+    if (input_dir / ".state/split.json").exists() and not split_manifest.is_file():
+        raise ValueError("PDF splitting is incomplete. Finish the split command before ingestion.")
     paths = sorted(
         p
         for p in input_dir.rglob("*")
@@ -50,6 +53,16 @@ def discover_pdfs(input_dir: Path, output: Path) -> list[Path]:
     )
     if not paths:
         raise ValueError(f"No PDF files found in {input_dir}.")
+    if split_manifest.is_file():
+        manifest = json.loads(split_manifest.read_text(encoding="utf-8"))
+        if manifest.get("format") == "doc2wiki-split-v1":
+            # Category folder names must not reorder documents from the original PDF.
+            ordered = [(input_dir / item["path"]).resolve() for item in manifest["documents"]]
+            if len(ordered) != len(paths) or set(ordered) != {path.resolve() for path in paths}:
+                raise ValueError(
+                    "Split manifest and PDF files differ. Use the complete split folder."
+                )
+            return ordered
     return paths
 
 

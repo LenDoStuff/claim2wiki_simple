@@ -53,12 +53,32 @@ class LLM:
         self.response_dir: Path | None = None
 
     def ask(self, system: str, user: str, result_type: type[T], output_tokens: int) -> T:
-        estimate = check_budget(system, user, output_tokens)
-        print(f"  {result_type.__name__}: ~{estimate:,} input tokens", flush=True)
-        # Each call owns its async clients. result_type selects a LOCAL Markdown parser.
-        return asyncio.run(self._ask(system, user, result_type, output_tokens))
+        text = self.ask_text(
+            system,
+            user,
+            stage=result_type.__name__,
+            output_tokens=output_tokens,
+            allow_empty=result_type is ReviewSuggestions,
+        )
+        return parse_response(text, result_type)
 
-    async def _ask(self, system: str, user: str, result_type: type[T], output_tokens: int) -> T:
+    def ask_text(
+        self,
+        system: str,
+        user: str,
+        *,
+        stage: str,
+        output_tokens: int = 8_192,
+        allow_empty: bool = False,
+    ) -> str:
+        """A plain Markdown response, also used by the standalone PDF splitter."""
+        estimate = check_budget(system, user, output_tokens)
+        print(f"  {stage}: ~{estimate:,} input tokens", flush=True)
+        return asyncio.run(self._ask_text(system, user, stage, output_tokens, allow_empty))
+
+    async def _ask_text(
+        self, system: str, user: str, stage: str, output_tokens: int, allow_empty: bool
+    ) -> str:
         async with (
             AzureCliCredential() as credential,
             AIProjectClient(endpoint=self.project_endpoint, credential=credential) as project,
@@ -69,7 +89,7 @@ class LLM:
             async with client.client:
                 agent = Agent(
                     client=client,
-                    name=f"doc2wiki-{result_type.__name__.lower()}",
+                    name=f"doc2wiki-{stage.lower()}",
                     instructions=system,
                 )
                 response = await agent.run(
@@ -85,24 +105,20 @@ class LLM:
         if self.response_dir:
             self.response_dir.mkdir(parents=True, exist_ok=True)
             stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
-            (self.response_dir / f"{stamp}-{result_type.__name__}.md").write_text(
-                text, encoding="utf-8"
-            )
+            (self.response_dir / f"{stamp}-{stage}.md").write_text(text, encoding="utf-8")
         if response.usage_details:
             self.usage.append(
                 {
-                    "stage": result_type.__name__,
+                    "stage": stage,
                     "deployment": self.deployment,
                     **response.usage_details,
                 }
             )
         if response.finish_reason == "length":
-            raise IncompleteResponse(f"{result_type.__name__} reached its output limit.", text)
-        if response.finish_reason != "stop" or (
-            not text.strip() and result_type is not ReviewSuggestions
-        ):
+            raise IncompleteResponse(f"{stage} reached its output limit.", text)
+        if response.finish_reason != "stop" or (not text.strip() and not allow_empty):
             raise ValueError(
-                f"{result_type.__name__} returned no complete result "
+                f"{stage} returned no complete result "
                 f"(finish_reason={response.finish_reason}). The source has not been committed."
             )
-        return parse_response(text, result_type)
+        return text
